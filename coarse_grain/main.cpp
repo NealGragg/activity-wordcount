@@ -47,9 +47,15 @@ std::vector<std::vector<std::string>> tokenizeLyrics(const std::vector<std::stri
   return ret;
 }
 
-void wordCount(int& c, std::mutex& mut) {
+void wordCount(int& c, std::mutex& mut, std::vector<std::vector<std::string>>& wordmap, Dictionary<std::string, int>& dict) {
   std::lock_guard<std::mutex> lg(mut);
-  ++c;
+  for(auto& filecontent: wordmap) {
+    for(auto& w: filecontent) {
+      c = dict.get(w);
+      ++c;
+      dict.set(w, c);
+    }
+  }
 }
 
 int main(int argc, char **argv)
@@ -81,25 +87,18 @@ int main(int argc, char **argv)
 
   std::vector<std::thread> filethreads;
   std::mutex mu;
-
+  int count = 0;
+  
   auto start = std::chrono::steady_clock::now();
 
-  for(auto& filecontent: wordmap) {
-    for(auto& w: filecontent) {
-      int count = dict.get(w);
-      filethreads.push_back(std::thread(wordCount, std::ref(count), std::ref(mu)));
-      dict.set(w, count);
-    }
-  }
-
+  //for(int i = 0; i < wordmap.size(); i++)
+  filethreads.push_back(std::thread(wordCount, std::ref(count), std::ref(mu), std::ref(wordmap), std::ref(dict)));
 
   for(auto& t: filethreads)
     t.join();
 
-
   auto stop = std::chrono::steady_clock::now();
   std::chrono::duration<double> time_elapsed = stop-start;
-
 
   // Check Hash Table Values 
   /* (you can uncomment, but this must be commented out for tests)
